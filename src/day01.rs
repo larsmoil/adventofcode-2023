@@ -53,7 +53,7 @@ fn solve(input: &str, string_numbers: &[(&str, u32)]) -> String {
         .map(|line| {
             let mut numbers: Vec<u32> = vec![];
             for i in 0..line.len() {
-                let slice = &line[i..line.len()];
+                let slice = &line[i..];
                 if let Some(&(_k, v)) = string_numbers.iter().find(|(k, _v)| slice.starts_with(k)) {
                     numbers.push(v);
                 }
