@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{ops::RangeInclusive, str::FromStr};
 
 use crate::problem::Solver;
 
@@ -15,7 +15,9 @@ impl Solver for Day {
                 .parse::<Race>()
                 .unwrap()
                 .winning_button_presses()
-                .len()
+                .size_hint()
+                .1
+                .unwrap()
         )
     }
 }
@@ -31,17 +33,17 @@ struct Race {
 }
 
 impl Race {
-    fn winning_button_presses(&self) -> Vec<u64> {
-        (1..self.time)
-            .map(|time_pushed| {
-                let time_remaining = self.time - time_pushed;
-                let speed = time_pushed;
-                let distance = speed * time_remaining;
-                (distance, time_pushed)
-            })
-            .filter(|&(distance, _time_pushed)| distance > self.distance)
-            .map(|(_, time_pushed)| time_pushed)
-            .collect()
+    fn winning_button_presses(&self) -> RangeInclusive<u64> {
+        let shortest_press = ((self.time / self.distance)..self.time).find(|time_pushed| {
+            let time_remaining = self.time - time_pushed;
+            let speed = time_pushed;
+            let distance = speed * time_remaining;
+            distance > self.distance
+        });
+        match shortest_press {
+            Some(n) => n..=(self.time - n),
+            None => 0..=0,
+        }
     }
 }
 
@@ -52,7 +54,7 @@ impl Races {
     fn margin_of_error(&self) -> usize {
         self.0
             .iter()
-            .map(|race| race.winning_button_presses().len())
+            .map(|race| race.winning_button_presses().size_hint().1.unwrap())
             .reduce(|acc, e| acc * e)
             .unwrap()
     }
@@ -147,7 +149,7 @@ Distance:  9  40  200"
     #[test]
     fn test_race_fwinning_button_presses() {
         assert_eq!(
-            vec![2, 3, 4, 5],
+            2..=5,
             Race {
                 time: 7,
                 distance: 9

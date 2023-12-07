@@ -26,7 +26,7 @@ struct Map {
 }
 
 impl Map {
-    fn process_seeds(&self, seeds: Vec<Range<i64>>) -> Vec<Range<i64>> {
+    fn process_seeds(&self, seeds: &[Range<i64>]) -> Vec<Range<i64>> {
         seeds
             .iter()
             .map(|seed| self.process_seed(seed))
@@ -90,7 +90,7 @@ impl Almanac {
         self.maps
             .iter()
             .fold(self.seeds(seeds_as_range), |seeds, map| {
-                map.process_seeds(seeds)
+                map.process_seeds(&seeds)
             })
             .iter()
             .map(|range| range.start)
