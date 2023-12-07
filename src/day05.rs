@@ -1,4 +1,3 @@
-use rayon::prelude::*;
 use std::{ops::Range, str::FromStr};
 
 use crate::problem::Solver;
@@ -26,6 +25,50 @@ struct Map {
     ranges: Vec<(Range<i64>, i64)>,
 }
 
+impl Map {
+    fn process_seeds(&self, seeds: Vec<Range<i64>>) -> Vec<Range<i64>> {
+        seeds
+            .iter()
+            .map(|seed| self.process_seed(seed))
+            .reduce(|acc, e| [acc, e].concat())
+            .unwrap()
+    }
+    fn process_seed(&self, seed: &Range<i64>) -> Vec<Range<i64>> {
+        let mut seeds: Vec<(Range<i64>, i64)> = vec![];
+        let mut ranges = self
+            .ranges
+            .iter()
+            .filter(|range| {
+                range.0.contains(&seed.start) && !(range.0.start..seed.start).is_empty()
+                    || range.0.contains(&seed.end) && !(range.0.start..seed.end).is_empty()
+                    || seed.contains(&range.0.start) && !(seed.start..range.0.start).is_empty()
+                    || seed.contains(&range.0.end) && !(range.0.end..seed.start).is_empty()
+            })
+            .collect::<Vec<&(Range<i64>, i64)>>();
+        ranges.sort_by(|a, b| a.0.start.cmp(&b.0.start));
+        if ranges.is_empty() {
+            seeds.push((seed.clone(), 0));
+        } else {
+            for range in &ranges {
+                let intersection = seed.start.max(range.0.start)..seed.end.min(range.0.end);
+                seeds.push((intersection, range.1));
+            }
+            if seed.start < ranges.first().unwrap().0.start {
+                let before = seed.start..ranges.first().unwrap().0.start;
+                seeds.push((before, 0));
+            }
+            if seed.end > seeds.last().unwrap().0.end {
+                let after = seeds.last().unwrap().0.end..seed.end;
+                seeds.push((after, 0));
+            }
+        }
+        seeds
+            .into_iter()
+            .map(|(range, offset)| (range.start + offset)..(range.end + offset))
+            .collect()
+    }
+}
+
 #[derive(Debug)]
 struct Almanac {
     seeds: Vec<i64>,
@@ -44,23 +87,13 @@ impl Almanac {
         }
     }
     fn map(&self, seeds_as_range: bool) -> i64 {
-        self.seeds(seeds_as_range)
-            .par_iter()
-            .map(|seeds| {
-                seeds
-                    .clone()
-                    .map(|seed| {
-                        self.maps.iter().fold(seed, |acc: i64, map| {
-                            let range = map.ranges.iter().find(|(range, _)| range.contains(&acc));
-                            acc + match range {
-                                Some((_, offset)) => *offset,
-                                None => 0,
-                            }
-                        })
-                    })
-                    .min()
-                    .unwrap()
+        self.maps
+            .iter()
+            .fold(self.seeds(seeds_as_range), |seeds, map| {
+                map.process_seeds(seeds)
             })
+            .iter()
+            .map(|range| range.start)
             .min()
             .unwrap()
     }
@@ -159,6 +192,18 @@ humidity-to-location map:
                 .parse()
                 .unwrap()
         )
+    }
+
+    #[test]
+    fn test_map_process_seed() {
+        assert_eq!(
+            vec![81..82],
+            Map {
+                name: String::from("seed-to-soil"),
+                ranges: vec![((98..100), -48), ((50..98), 2)]
+            }
+            .process_seed(&(79..80))
+        );
     }
 
     #[test]

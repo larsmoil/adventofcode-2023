@@ -8,8 +8,3 @@ readme = "README.md"
 license = "MIT"
 description = "My solutions for Advent of Code 2023"
 repository = "https://github.com/larsmoil/adventofcode-2023"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
-[dependencies]
-rayon = "1.8.0"
