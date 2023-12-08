@@ -105,12 +105,12 @@ impl Hand {
         } else {
             0
         };
-        let occurences: Vec<usize> = CARDS
+        let mut num_cards: Vec<usize> = CARDS
             .into_iter()
             .filter(|c| !with_jokers || *c != JOKER)
             .map(|c| self.0.matches(c).count())
+            .filter(|&n| n > 0)
             .collect();
-        let mut num_cards: Vec<usize> = occurences.into_iter().filter(|&n| n > 0).collect();
         num_cards.sort_unstable();
         num_cards.reverse();
         let first = num_cards.first().unwrap_or(&0);
