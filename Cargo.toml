@@ -8,3 +8,6 @@ readme = "README.md"
 license = "MIT"
 description = "My solutions for Advent of Code 2023"
 repository = "https://github.com/larsmoil/adventofcode-2023"
+
+[dependencies]
+num = "0.4.1"
