@@ -7,7 +7,7 @@ cargo test
 
 If you want the optimized version:
 ```shell
-cargo test --release
+RUST_MIN_STACK=8388608 cargo test --release
 ```
 
 ## Run
