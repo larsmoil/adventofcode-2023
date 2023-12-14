@@ -12,11 +12,12 @@ mod day07;
 mod day08;
 mod day09;
 mod day10;
+mod day11;
 mod problem;
 
 fn main() {
     let now = Instant::now();
-    for day in 1..=10 {
+    for day in 1..=11 {
         let (d, inp): (&dyn Solver, &str) = match day {
             1 => (&day01::Day {}, day01::input()),
             2 => (&day02::Day {}, day02::input()),
@@ -28,6 +29,7 @@ fn main() {
             8 => (&day08::Day {}, day08::input()),
             9 => (&day09::Day {}, day09::input()),
             10 => (&day10::Day {}, day10::input()),
+            11 => (&day11::Day {}, day11::input()),
             _ => panic!("Invalid day!"),
         };
         let now = Instant::now();
