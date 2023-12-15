@@ -1,4 +1,4 @@
-use std::fmt::Debug;
+use std::{cmp::Ordering, fmt::Debug};
 
 use crate::problem::Solver;
 
@@ -56,27 +56,39 @@ impl Debug for ParabolicReflectorDish {
     }
 }
 impl ParabolicReflectorDish {
-    fn roll(s: &str, from: &str, to: &str) -> String {
-        s.split('#')
+    fn roll(s: &[char], before: char, after: char) -> Vec<char> {
+        let chunks: Vec<Vec<char>> = s
+            .split(|c| *c == '#')
             .map(|chunk| {
-                let mut chunk = String::from(chunk);
-                loop {
-                    let pre = chunk.clone();
-                    chunk = chunk.replace(from, to);
-                    if pre == chunk {
-                        break;
+                let mut chunk = chunk.to_vec();
+                chunk.sort_by(|a, b| {
+                    if a == b {
+                        Ordering::Equal
+                    } else if *a == before && *b == after {
+                        Ordering::Less
+                    } else {
+                        Ordering::Greater
                     }
-                }
+                });
                 chunk
             })
-            .collect::<Vec<String>>()
-            .join("#")
+            .collect::<Vec<Vec<char>>>();
+
+        chunks
+            .into_iter()
+            .enumerate()
+            .fold(vec![], |mut acc, (i, c)| {
+                if i != 0 {
+                    acc.push('#');
+                }
+                [acc, c].concat()
+            })
     }
-    fn roll_end(s: &str) -> String {
-        Self::roll(s, "O.", ".O")
+    fn roll_end(s: &[char]) -> Vec<char> {
+        Self::roll(s, '.', 'O')
     }
-    fn roll_start(s: &str) -> String {
-        Self::roll(s, ".O", "O.")
+    fn roll_start(s: &[char]) -> Vec<char> {
+        Self::roll(s, 'O', '.')
     }
     fn rotate_360(&mut self) {
         self.tilt_north();
@@ -88,29 +100,20 @@ impl ParabolicReflectorDish {
         self.0 = self
             .0
             .iter()
-            .map(|l| {
-                Self::roll_start(&l.iter().collect::<String>())
-                    .chars()
-                    .collect::<Vec<char>>()
-            })
+            .map(|l| Self::roll_start(l))
             .collect::<Vec<Vec<char>>>();
     }
     fn tilt_east(&mut self) {
         self.0 = self
             .0
             .iter()
-            .map(|l| {
-                Self::roll_end(&l.iter().collect::<String>())
-                    .chars()
-                    .collect::<Vec<char>>()
-            })
+            .map(|l| Self::roll_end(l))
             .collect::<Vec<Vec<char>>>();
     }
     fn tilt_south(&mut self) {
         let tilted_columns: Vec<Vec<char>> = (0..self.0.len())
-            .map(|i| self.0.iter().map(|l| l[i]).collect::<String>())
+            .map(|i| self.0.iter().map(|l| l[i]).collect::<Vec<char>>())
             .map(|c| Self::roll_end(&c))
-            .map(|c| c.chars().collect())
             .collect();
 
         let lines: Vec<Vec<char>> = (0..self.0.len())
@@ -127,9 +130,8 @@ impl ParabolicReflectorDish {
 
     fn tilt_north(&mut self) {
         let tilted_columns: Vec<Vec<char>> = (0..self.0.len())
-            .map(|i| self.0.iter().map(|l| l[i]).collect::<String>())
+            .map(|i| self.0.iter().map(|l| l[i]).collect::<Vec<char>>())
             .map(|c| Self::roll_start(&c))
-            .map(|c| c.chars().collect())
             .collect();
 
         let lines: Vec<Vec<char>> = (0..self.0.len())
