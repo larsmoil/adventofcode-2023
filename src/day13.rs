@@ -68,15 +68,15 @@ impl Map {
 
         let bottom = || Self::from_bottom(&self.0, required_smudges).map(map_botton);
         let top = || Self::from_top(&self.0, required_smudges).map(map_top);
-        bottom()
-            .or_else(top)
-            .map(Reflection::Horizontal)
-            .unwrap_or_else(|| {
+        bottom().or_else(top).map_or_else(
+            || {
                 let rotated = Self::rotate(&self.0);
                 let right = || Self::from_bottom(&rotated, required_smudges).map(map_botton);
                 let left = || Self::from_top(&rotated, required_smudges).map(map_top);
                 Reflection::Vertical(right().or_else(left).unwrap())
-            })
+            },
+            Reflection::Horizontal,
+        )
     }
 
     fn rotate(pattern: &str) -> String {
