@@ -23,7 +23,7 @@ impl Solver for Day {
                 .iter()
                 .take(patterns.len() - 1)
                 .enumerate()
-                .find(|(_, p)| **p == dish.0.clone())
+                .find(|(_, p)| **p == dish.0)
             {
                 let cycle_len = i - index;
                 let cycles_to_go = (cycles - i - 1) % cycle_len;
@@ -41,20 +41,14 @@ impl Solver for Day {
     }
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Debug, PartialEq)]
 struct ParabolicReflectorDish(Vec<Vec<char>>);
 impl From<String> for ParabolicReflectorDish {
     fn from(value: String) -> Self {
         Self(value.lines().map(|l| l.chars().collect()).collect())
     }
 }
-impl Debug for ParabolicReflectorDish {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_tuple("ParabolicReflectorDish")
-            .field(&self.0)
-            .finish()
-    }
-}
+
 impl ParabolicReflectorDish {
     fn roll(s: &[char], before: char, after: char) -> Vec<char> {
         let chunks: Vec<Vec<char>> = s
@@ -97,18 +91,10 @@ impl ParabolicReflectorDish {
         self.tilt_east();
     }
     fn tilt_west(&mut self) {
-        self.0 = self
-            .0
-            .iter()
-            .map(|l| Self::roll_start(l))
-            .collect::<Vec<Vec<char>>>();
+        self.0 = self.0.iter().map(|l| Self::roll_start(l)).collect();
     }
     fn tilt_east(&mut self) {
-        self.0 = self
-            .0
-            .iter()
-            .map(|l| Self::roll_end(l))
-            .collect::<Vec<Vec<char>>>();
+        self.0 = self.0.iter().map(|l| Self::roll_end(l)).collect();
     }
     fn tilt_south(&mut self) {
         let tilted_columns: Vec<Vec<char>> = (0..self.0.len())
@@ -116,7 +102,7 @@ impl ParabolicReflectorDish {
             .map(|c| Self::roll_end(&c))
             .collect();
 
-        let lines: Vec<Vec<char>> = (0..self.0.len())
+        self.0 = (0..self.0.len())
             .map(|i| {
                 tilted_columns
                     .iter()
@@ -124,8 +110,6 @@ impl ParabolicReflectorDish {
                     .collect::<Vec<char>>()
             })
             .collect();
-
-        self.0 = lines;
     }
 
     fn tilt_north(&mut self) {
@@ -134,7 +118,7 @@ impl ParabolicReflectorDish {
             .map(|c| Self::roll_start(&c))
             .collect();
 
-        let lines: Vec<Vec<char>> = (0..self.0.len())
+        self.0 = (0..self.0.len())
             .map(|i| {
                 tilted_columns
                     .iter()
@@ -142,8 +126,6 @@ impl ParabolicReflectorDish {
                     .collect::<Vec<char>>()
             })
             .collect();
-
-        self.0 = lines;
     }
     fn load(&self) -> usize {
         self.0
