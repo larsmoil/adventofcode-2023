@@ -1,5 +1,4 @@
 use std::fmt::Write;
-use std::str::FromStr;
 
 use crate::problem::Solver;
 
@@ -9,9 +8,7 @@ impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         format!(
             "{}",
-            input
-                .parse::<ConditionRecords>()
-                .unwrap()
+            ConditionRecords::from(input)
                 .0
                 .iter()
                 .map(ConditionRecord::permutations)
@@ -39,14 +36,10 @@ impl Solver for Day {
 }
 
 #[derive(Debug, PartialEq)]
-struct ConditionRecords(Vec<ConditionRecord>);
-impl FromStr for ConditionRecords {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ConditionRecords(
-            s.lines().map(|line| line.parse().unwrap()).collect(),
-        ))
+struct ConditionRecords<'a>(Vec<ConditionRecord<'a>>);
+impl<'a> From<&'a str> for ConditionRecords<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value.lines().map(ConditionRecord::from).collect())
     }
 }
 
@@ -87,19 +80,17 @@ fn permutations(springs: &str, groups: &[usize]) -> usize {
 }
 
 #[derive(Clone, Debug, PartialEq)]
-struct ConditionRecord(String, Vec<usize>);
-impl ConditionRecord {
+struct ConditionRecord<'a>(&'a str, Vec<usize>);
+impl<'a> ConditionRecord<'a> {
     fn permutations(&self) -> usize {
-        permutations(&self.0, &self.1)
+        permutations(self.0, &self.1)
     }
 }
-impl FromStr for ConditionRecord {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (spring_statuses, groups) = s.split_once(' ').unwrap();
+impl<'a> From<&'a str> for ConditionRecord<'a> {
+    fn from(value: &'a str) -> Self {
+        let (spring_statuses, groups) = value.split_once(' ').unwrap();
         let groups: Vec<usize> = groups.split(',').map(|g| g.parse().unwrap()).collect();
-        Ok(ConditionRecord(String::from(spring_statuses), groups))
+        Self(spring_statuses, groups)
     }
 }
 
@@ -122,47 +113,26 @@ mod tests {
 
     #[test]
     fn test_pt1_example() {
+        assert_eq!(1, ConditionRecord::from("???.### 1,1,3").permutations());
+        assert_eq!(
+            4,
+            ConditionRecord::from(".??..??...?##. 1,1,3").permutations()
+        );
         assert_eq!(
             1,
-            "???.### 1,1,3"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
+            ConditionRecord::from("?#?#?#?#?#?#?#? 1,3,1,6").permutations()
+        );
+        assert_eq!(
+            1,
+            ConditionRecord::from("????.#...#... 4,1,1").permutations()
         );
         assert_eq!(
             4,
-            ".??..??...?##. 1,1,3"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
-        );
-        assert_eq!(
-            1,
-            "?#?#?#?#?#?#?#? 1,3,1,6"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
-        );
-        assert_eq!(
-            1,
-            "????.#...#... 4,1,1"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
-        );
-        assert_eq!(
-            4,
-            "????.######..#####. 1,6,5"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
+            ConditionRecord::from("????.######..#####. 1,6,5").permutations()
         );
         assert_eq!(
             10,
-            "?###???????? 3,2,1"
-                .parse::<ConditionRecord>()
-                .unwrap()
-                .permutations()
+            ConditionRecord::from("?###???????? 3,2,1").permutations()
         );
         assert_eq!("21".to_string(), Day {}.pt1(example_input()));
     }

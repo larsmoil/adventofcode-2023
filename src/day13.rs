@@ -1,12 +1,10 @@
-use std::str::FromStr;
-
 use crate::problem::Solver;
 
 pub struct Day {}
 
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
-        let maps: Maps = input.parse().unwrap();
+        let maps: Maps = Maps::from(input);
         let reflections = maps.reflections(0);
         format!(
             "{}",
@@ -22,7 +20,7 @@ impl Solver for Day {
         )
     }
     fn pt2(&self, input: &str) -> String {
-        let maps: Maps = input.parse().unwrap();
+        let maps: Maps = Maps::from(input);
         let reflections = maps.reflections(1);
         format!(
             "{}",
@@ -49,15 +47,13 @@ enum Reflection {
     Vertical(usize),
 }
 
-struct Map(String);
-impl FromStr for Map {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Map(String::from(s)))
+struct Map<'a>(&'a str);
+impl<'a> From<&'a str> for Map<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value)
     }
 }
-impl Map {
+impl<'a> Map<'a> {
     fn reflection(&self, required_smudges: usize) -> Reflection {
         fn map_top((_n, p): (usize, String)) -> usize {
             p.lines().collect::<Vec<_>>().len() / 2
@@ -66,11 +62,11 @@ impl Map {
             n + p.lines().collect::<Vec<_>>().len() / 2
         }
 
-        let bottom = || Self::from_bottom(&self.0, required_smudges).map(map_botton);
-        let top = || Self::from_top(&self.0, required_smudges).map(map_top);
+        let bottom = || Self::from_bottom(self.0, required_smudges).map(map_botton);
+        let top = || Self::from_top(self.0, required_smudges).map(map_top);
         bottom().or_else(top).map_or_else(
             || {
-                let rotated = Self::rotate(&self.0);
+                let rotated = Self::rotate(self.0);
                 let right = || Self::from_bottom(&rotated, required_smudges).map(map_botton);
                 let left = || Self::from_top(&rotated, required_smudges).map(map_top);
                 Reflection::Vertical(right().or_else(left).unwrap())
@@ -137,16 +133,14 @@ impl Map {
     }
 }
 
-struct Maps(Vec<Map>);
-impl FromStr for Maps {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Maps(s.split("\n\n").map(|m| m.parse().unwrap()).collect()))
+struct Maps<'a>(Vec<Map<'a>>);
+impl<'a> From<&'a str> for Maps<'a> {
+    fn from(value: &'a str) -> Self {
+        Maps(value.split("\n\n").map(Map::from).collect())
     }
 }
 
-impl Maps {
+impl<'a> Maps<'a> {
     fn reflections(&self, required_smudges: usize) -> Vec<Reflection> {
         self.0
             .iter()
