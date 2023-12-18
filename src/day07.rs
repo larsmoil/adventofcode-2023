@@ -1,14 +1,14 @@
-use std::{cmp::Ordering, str::FromStr};
+use std::cmp::Ordering;
 
 use crate::problem::Solver;
 
 pub struct Day {}
 
 #[derive(Debug, PartialEq)]
-struct Hands(Vec<Hand>);
+struct Hands<'a>(Vec<Hand<'a>>);
 
 #[derive(Clone, Debug, PartialEq)]
-struct Hand(String, u64);
+struct Hand<'a>(&'a str, u64);
 
 #[derive(Debug, PartialEq)]
 enum Type {
@@ -25,9 +25,7 @@ impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         format!(
             "{}",
-            input
-                .parse::<Hands>()
-                .unwrap()
+            Hands::from(input)
                 .ranked(false)
                 .iter()
                 .enumerate()
@@ -38,9 +36,7 @@ impl Solver for Day {
     fn pt2(&self, input: &str) -> String {
         format!(
             "{}",
-            input
-                .parse::<Hands>()
-                .unwrap()
+            Hands::from(input)
                 .ranked(true)
                 .iter()
                 .enumerate()
@@ -58,7 +54,7 @@ const CARDS_WITH_JOKERS: [char; 13] = [
 ];
 const JOKER: char = 'J';
 
-impl Hands {
+impl Hands<'_> {
     fn ranked(&self, with_jokers: bool) -> Vec<Hand> {
         let cards = if with_jokers {
             CARDS_WITH_JOKERS
@@ -98,7 +94,7 @@ impl Hands {
     }
 }
 
-impl Hand {
+impl<'a> Hand<'a> {
     fn hand_type(&self, with_jokers: bool) -> Type {
         let jokers = if with_jokers {
             self.0.matches(JOKER).count()
@@ -131,25 +127,17 @@ impl Hand {
     }
 }
 
-impl FromStr for Hand {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let (hand, bid) = s.split_once(' ').unwrap();
+impl<'a> From<&'a str> for Hand<'a> {
+    fn from(value: &'a str) -> Self {
+        let (hand, bid) = value.split_once(' ').unwrap();
         let bid: u64 = bid.parse().unwrap();
-        Ok(Hand(String::from(hand), bid))
+        Self(hand, bid)
     }
 }
 
-impl FromStr for Hands {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Hands(
-            s.lines()
-                .map(|line| line.parse::<Hand>().unwrap())
-                .collect(),
-        ))
+impl<'a> From<&'a str> for Hands<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value.lines().map(Hand::from).collect())
     }
 }
 
@@ -171,7 +159,7 @@ QQQJA 483"
 
     #[test]
     fn test_hand_hand_type_without_jokers() {
-        let hands: Hands = example_input().parse().unwrap();
+        let hands: Hands = Hands::from(example_input());
         let actual: Vec<Type> = hands
             .0
             .into_iter()
@@ -189,7 +177,7 @@ QQQJA 483"
 
     #[test]
     fn test_hand_hand_type_with_jokers() {
-        let hands: Hands = example_input().parse().unwrap();
+        let hands: Hands = Hands::from(example_input());
         let actual: Vec<Type> = hands
             .0
             .into_iter()
@@ -207,36 +195,36 @@ QQQJA 483"
 
     #[test]
     fn test_hands_ranked_without_jokers() {
-        let hands: Hands = example_input().parse().unwrap();
-        let actual: Vec<(String, Type, u64)> = hands
+        let hands: Hands = Hands::from(example_input());
+        let actual: Vec<(&str, Type, u64)> = hands
             .ranked(false)
             .iter()
-            .map(|hand| (hand.0.clone(), hand.hand_type(false), hand.1))
+            .map(|hand| (hand.0, hand.hand_type(false), hand.1))
             .collect();
-        let expected: Vec<(String, Type, u64)> = vec![
-            (String::from("32T3K"), Type::OnePair, 765),
-            (String::from("KTJJT"), Type::TwoPair, 220),
-            (String::from("KK677"), Type::TwoPair, 28),
-            (String::from("T55J5"), Type::ThreeOfKind, 684),
-            (String::from("QQQJA"), Type::ThreeOfKind, 483),
+        let expected: Vec<(&str, Type, u64)> = vec![
+            ("32T3K", Type::OnePair, 765),
+            ("KTJJT", Type::TwoPair, 220),
+            ("KK677", Type::TwoPair, 28),
+            ("T55J5", Type::ThreeOfKind, 684),
+            ("QQQJA", Type::ThreeOfKind, 483),
         ];
         assert_eq!(expected, actual);
     }
 
     #[test]
     fn test_hands_ranked_with_jokers() {
-        let hands: Hands = example_input().parse().unwrap();
-        let actual: Vec<(String, Type, u64)> = hands
+        let hands: Hands = Hands::from(example_input());
+        let actual: Vec<(&str, Type, u64)> = hands
             .ranked(true)
             .iter()
-            .map(|hand| (hand.0.clone(), hand.hand_type(true), hand.1))
+            .map(|hand| (hand.0, hand.hand_type(true), hand.1))
             .collect();
-        let expected: Vec<(String, Type, u64)> = vec![
-            (String::from("32T3K"), Type::OnePair, 765),
-            (String::from("KK677"), Type::TwoPair, 28),
-            (String::from("T55J5"), Type::FourOfKind, 684),
-            (String::from("QQQJA"), Type::FourOfKind, 483),
-            (String::from("KTJJT"), Type::FourOfKind, 220),
+        let expected: Vec<(&str, Type, u64)> = vec![
+            ("32T3K", Type::OnePair, 765),
+            ("KK677", Type::TwoPair, 28),
+            ("T55J5", Type::FourOfKind, 684),
+            ("QQQJA", Type::FourOfKind, 483),
+            ("KTJJT", Type::FourOfKind, 220),
         ];
         assert_eq!(expected, actual);
     }
