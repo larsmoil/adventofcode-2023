@@ -1,5 +1,6 @@
-use std::{fmt::Display, str::FromStr};
+use std::str::FromStr;
 
+use crate::libs::{shoelace, Coordinate};
 use crate::problem::Solver;
 
 pub struct Day {}
@@ -22,32 +23,16 @@ pub(crate) fn input() -> &'static str {
     include_str!("day10-input.txt").trim()
 }
 
-#[derive(Clone, Debug, PartialEq)]
-struct Coordinate(usize, usize);
-impl Display for Coordinate {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&format!("({}, {})", self.0, self.1))
-    }
-}
-
 impl PipeMaze {
     fn cycle(&self) -> Vec<Coordinate> {
         let start = self.start();
-        let connections = self.connections(&start);
-        assert!(
-            connections.len() == 2,
-            "Expected two paths from start, cannot handle it!"
-        );
+        let mut connections = self.connections(&start);
 
         let mut cycle: Vec<Coordinate> = vec![start.clone()];
         let mut from = start.clone();
-        let mut to = connections.first().unwrap().clone();
+        let mut to = connections.next().unwrap().clone();
         while to != start {
-            let new_tos: Vec<Coordinate> = self
-                .connections(&to)
-                .into_iter()
-                .filter(|c| c != &from)
-                .collect();
+            let new_tos: Vec<Coordinate> = self.connections(&to).filter(|c| c != &from).collect();
             assert!(
                 new_tos.len() == 1,
                 "expected single connection, got: {new_tos:?} (from: {from}, to: {to})"
@@ -62,18 +47,7 @@ impl PipeMaze {
     }
 
     fn enclosed(&self) -> isize {
-        let cycle = self.cycle();
-        let len: isize = cycle.len().try_into().unwrap();
-        let area = cycle
-            .windows(2)
-            .fold(0_isize, |acc, w| {
-                let a: isize = (w[0].1 * w[1].0).try_into().unwrap();
-                let b: isize = (w[0].0 * w[1].1).try_into().unwrap();
-                acc + a - b
-            })
-            .abs()
-            / 2;
-        area - len / 2 + 1
+        shoelace(&self.cycle()) - self.cycle().len() as isize
     }
 
     fn start(&self) -> Coordinate {
@@ -83,10 +57,13 @@ impl PipeMaze {
             .enumerate()
             .find(|(_, pipe_type)| **pipe_type == PipeType::Start)
             .unwrap();
-        Coordinate(i % self.width, i / self.width)
+        Coordinate(
+            isize::try_from(i % self.width).unwrap(),
+            isize::try_from(i / self.width).unwrap(),
+        )
     }
 
-    fn connections(&self, position: &Coordinate) -> Vec<Coordinate> {
+    fn connections(&self, position: &Coordinate) -> impl Iterator<Item = Coordinate> {
         [
             self.north(position),
             self.east(position),
@@ -95,11 +72,10 @@ impl PipeMaze {
         ]
         .into_iter()
         .flatten()
-        .collect()
     }
 
     fn pipe_type(&self, position: &Coordinate) -> &PipeType {
-        &self.pipes[position.0 + position.1 * self.width]
+        &self.pipes[position.0 as usize + position.1 as usize * self.width]
     }
 
     fn connection(&self, from: &Coordinate, direction: &Direction) -> Option<Coordinate> {
@@ -114,14 +90,14 @@ impl PipeMaze {
                 }
             }
             Direction::East => {
-                if from_x < self.width - 1 {
+                if from_x < self.width as isize - 1 {
                     Some(Coordinate(from.0 + 1, from.1))
                 } else {
                     None
                 }
             }
             Direction::South => {
-                if from_y < (self.pipes.len() / self.width) - 1 {
+                if from_y < (self.pipes.len() as isize / self.width as isize) - 1 {
                     Some(Coordinate(from.0, from.1 + 1))
                 } else {
                     None
@@ -171,13 +147,12 @@ impl FromStr for PipeMaze {
         let width = lines.first().unwrap().len();
         let pipes: Vec<PipeType> = lines
             .iter()
-            .map(|line| {
+            .flat_map(|line| {
                 line.chars()
                     .map(|c| format!("{c}").parse::<PipeType>().unwrap())
                     .collect::<Vec<PipeType>>()
             })
-            .reduce(|acc, e| [acc, e].concat())
-            .unwrap();
+            .collect();
         Ok(PipeMaze { pipes, width })
     }
 }

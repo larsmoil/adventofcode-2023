@@ -37,6 +37,7 @@ struct Map(Vec<u8>, u8);
 impl FromStr for Map {
     type Err = TryFromIntError;
 
+    #[allow(clippy::cast_possible_truncation)]
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let width = u8::try_from(s.lines().collect::<Vec<_>>().first().unwrap().len())?;
         let numbers: Vec<u8> = s
@@ -171,7 +172,7 @@ impl Map {
             }
 
             for neighbor in next_fn(&(coordinate, direction, direction_count)) {
-                let neighbor_cost = self.0[self.index(neighbor.0)] as u32;
+                let neighbor_cost = u32::from(self.0[self.index(neighbor.0)]);
                 let new_cost = cost + neighbor_cost;
 
                 if let Some(&best) = distances.get(&neighbor) {

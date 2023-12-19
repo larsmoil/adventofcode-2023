@@ -55,8 +55,7 @@ impl Races {
         self.0
             .iter()
             .map(|race| race.winning_button_presses().size_hint().1.unwrap())
-            .reduce(|acc, e| acc * e)
-            .unwrap()
+            .product::<usize>()
     }
 }
 

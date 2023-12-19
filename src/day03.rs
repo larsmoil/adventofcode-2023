@@ -1,31 +1,13 @@
-use std::str::FromStr;
-
 use crate::problem::Solver;
 
 pub struct Day {}
 
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
-        format!(
-            "{:?}",
-            input
-                .parse::<GearRatios>()
-                .unwrap()
-                .part_numbers()
-                .iter()
-                .sum::<u32>()
-        )
+        format!("{:?}", GearRatios::from(input).part_numbers().sum::<u32>())
     }
     fn pt2(&self, input: &str) -> String {
-        format!(
-            "{:?}",
-            input
-                .parse::<GearRatios>()
-                .unwrap()
-                .gear_ratios()
-                .iter()
-                .sum::<u32>()
-        )
+        format!("{:?}", GearRatios::from(input).gear_ratios().sum::<u32>())
     }
 }
 
@@ -33,18 +15,16 @@ pub(crate) fn input() -> &'static str {
     include_str!("day03-input.txt").trim()
 }
 
-struct GearRatios(String);
+struct GearRatios<'a>(&'a str);
 
-impl FromStr for GearRatios {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(GearRatios(String::from(s)))
+impl<'a> From<&'a str> for GearRatios<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value)
     }
 }
 
-impl GearRatios {
-    fn part_numbers(&self) -> Vec<u32> {
+impl<'a> GearRatios<'a> {
+    fn part_numbers(&self) -> impl Iterator<Item = u32> {
         let numbers = self.numbers(|c| c != '.' && !c.is_numeric());
         numbers
             .into_iter()
@@ -52,30 +32,27 @@ impl GearRatios {
             .unwrap()
             .into_iter()
             .map(|e| e.2)
-            .collect()
     }
 
-    fn gear_ratios(&self) -> Vec<u32> {
+    fn gear_ratios(&self) -> impl Iterator<Item = u32> {
         let numbers = self.numbers(|c| c == '*');
         numbers
             .into_iter()
             .filter(|a| a.len() > 1)
             .map(|t| t.iter().map(|t| t.2).reduce(|acc, e| acc * e).unwrap())
-            .collect()
     }
 
     fn symbols(&self, predicate: fn(char) -> bool) -> Vec<(usize, usize, char)> {
         self.0
             .lines()
             .enumerate()
-            .map(|(y, line)| {
+            .flat_map(|(y, line)| {
                 line.chars()
                     .enumerate()
                     .filter_map(|(x, c)| if predicate(c) { Some((x, y, c)) } else { None })
-                    .collect()
+                    .collect::<Vec<_>>()
             })
-            .reduce(|acc, e| [acc, e].concat())
-            .unwrap()
+            .collect()
     }
 
     fn numbers(&self, adjacent_to: fn(char) -> bool) -> Vec<Vec<(usize, usize, u32)>> {

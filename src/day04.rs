@@ -1,32 +1,27 @@
-use std::str::FromStr;
-
 use crate::problem::Solver;
 
 pub struct Day {}
 
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
-        format!("{}", input.parse::<Game>().unwrap().score())
+        format!("{}", Game::from(input).score())
     }
     fn pt2(&self, input: &str) -> String {
-        format!("{}", input.parse::<Game>().unwrap().cards())
+        format!("{}", Game::from(input).cards())
     }
 }
 
-struct Game(String);
-impl FromStr for Game {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(Game(String::from(s)))
+struct Game<'a>(&'a str);
+impl<'a> From<&'a str> for Game<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value)
     }
 }
-impl Game {
+impl<'a> Game<'a> {
     fn score(&self) -> u32 {
         self.0
             .lines()
-            .map(ScratchCard::from_str)
-            .map(std::result::Result::unwrap)
+            .map(ScratchCard::from)
             .map(|g| g.score())
             .sum()
     }
@@ -34,8 +29,8 @@ impl Game {
         let mut cards: Vec<(u32, ScratchCard)> = self
             .0
             .lines()
-            .map(ScratchCard::from_str)
-            .map(|o| (1, o.unwrap()))
+            .map(ScratchCard::from)
+            .map(|o| (1, o))
             .collect();
         (0..cards.len()).for_each(|i| {
             let card = &cards[i];
@@ -52,16 +47,14 @@ impl Game {
 }
 
 #[derive(Debug)]
-struct ScratchCard(String);
-impl FromStr for ScratchCard {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(ScratchCard(String::from(s)))
+struct ScratchCard<'a>(&'a str);
+impl<'a> From<&'a str> for ScratchCard<'a> {
+    fn from(value: &'a str) -> Self {
+        Self(value)
     }
 }
 
-impl ScratchCard {
+impl<'a> ScratchCard<'a> {
     fn matching_numbers(&self) -> u32 {
         let (winning, my) = self.numbers();
         let num_matches: u32 = my
