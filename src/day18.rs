@@ -8,12 +8,12 @@ pub struct Day {}
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         let lavaduct_lagoon = LavaductLagoon::from(input);
-        let dug = lavaduct_lagoon.dig(InstructionType::Literal);
+        let dug = lavaduct_lagoon.dig(&InstructionType::Literal);
         format!("{dug}")
     }
     fn pt2(&self, input: &str) -> String {
         let lavaduct_lagoon = LavaductLagoon::from(input);
-        let dug = lavaduct_lagoon.dig(InstructionType::Color);
+        let dug = lavaduct_lagoon.dig(&InstructionType::Color);
         format!("{dug}")
     }
 }
@@ -26,12 +26,12 @@ enum InstructionType {
 struct LavaductLagoon<'a>(Vec<Instruction<'a>>);
 
 impl<'a> LavaductLagoon<'a> {
-    fn dig(&self, instruction_type: InstructionType) -> isize {
+    fn dig(&self, instruction_type: &InstructionType) -> isize {
         let start: Coordinate = Coordinate(0, 0);
         let dig_points: Vec<Coordinate> = self.0.iter().fold(vec![start], |mut acc, dig| {
             let Coordinate(x, y) = *acc.last().unwrap();
             let (direction, steps) = match instruction_type {
-                InstructionType::Literal => (dig.0.clone(), dig.1.clone()),
+                InstructionType::Literal => (dig.0.clone(), dig.1),
                 InstructionType::Color => dig.2.extract_instruction(),
             };
             let to: Coordinate = match direction {

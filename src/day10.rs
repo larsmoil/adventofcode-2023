@@ -47,7 +47,7 @@ impl PipeMaze {
     }
 
     fn enclosed(&self) -> isize {
-        shoelace(&self.cycle()) - self.cycle().len() as isize
+        shoelace(&self.cycle()) - isize::try_from(self.cycle().len()).unwrap()
     }
 
     fn start(&self) -> Coordinate {
@@ -75,7 +75,8 @@ impl PipeMaze {
     }
 
     fn pipe_type(&self, position: &Coordinate) -> &PipeType {
-        &self.pipes[position.0 as usize + position.1 as usize * self.width]
+        &self.pipes[usize::try_from(position.0).unwrap()
+            + usize::try_from(position.1).unwrap() * self.width]
     }
 
     fn connection(&self, from: &Coordinate, direction: &Direction) -> Option<Coordinate> {
@@ -90,14 +91,18 @@ impl PipeMaze {
                 }
             }
             Direction::East => {
-                if from_x < self.width as isize - 1 {
+                if from_x < isize::try_from(self.width).unwrap() - 1 {
                     Some(Coordinate(from.0 + 1, from.1))
                 } else {
                     None
                 }
             }
             Direction::South => {
-                if from_y < (self.pipes.len() as isize / self.width as isize) - 1 {
+                if from_y
+                    < (isize::try_from(self.pipes.len()).unwrap()
+                        / isize::try_from(self.width).unwrap())
+                        - 1
+                {
                     Some(Coordinate(from.0, from.1 + 1))
                 } else {
                     None
