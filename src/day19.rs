@@ -1,4 +1,4 @@
-use std::{collections::HashMap, ops::Range};
+use std::{collections::HashMap, ops::RangeInclusive};
 
 use crate::problem::Solver;
 pub struct Day {}
@@ -9,7 +9,7 @@ impl Solver for Day {
         let accepted = workflows.sort();
         let accepted: usize = accepted
             .iter()
-            .map(|p| p.a.start + p.m.start + p.s.start + p.x.start)
+            .map(|p| p.a.start() + p.m.start() + p.s.start() + p.x.start())
             .map(|s| usize::try_from(s).unwrap())
             .sum::<usize>();
         format!("{accepted}")
@@ -18,10 +18,10 @@ impl Solver for Day {
         let workflows = Workflows::from(input);
         let processed = workflows.process_range(
             Part {
-                x: 1..4001,
-                m: 1..4001,
-                a: 1..4001,
-                s: 1..4001,
+                x: 1..=4000,
+                m: 1..=4000,
+                a: 1..=4000,
+                s: 1..=4000,
             },
             &ProcessResult::Next("in"),
         );
@@ -36,7 +36,7 @@ impl<'a> Workflow<'a> {
 }
 
 impl Part {
-    fn with_attr(&self, attr: &Attr, value: Range<u16>) -> Part {
+    fn with_attr(&self, attr: &Attr, value: RangeInclusive<u16>) -> Part {
         match attr {
             Attr::A => Part {
                 a: value,
@@ -99,7 +99,7 @@ impl<'a> Workflows<'a> {
                 for rule in &workflow.1 {
                     match rule {
                         Rule::Pass(target) => {
-                            sum += self.process_range(part, &target);
+                            sum += self.process_range(part, target);
                             break;
                         }
                         Rule::Conditional(attr, operator, threshold, to) => {
@@ -109,33 +109,33 @@ impl<'a> Workflows<'a> {
                                 Attr::S => &part.s,
                                 Attr::X => &part.x,
                             };
-                            if value.contains(&threshold) {
+                            if value.contains(threshold) {
                                 let matching = match operator {
-                                    Operator::LessThan => value.start..*threshold,
-                                    Operator::GreaterThan => *threshold + 1..value.end,
+                                    Operator::LessThan => *value.start()..=*threshold - 1,
+                                    Operator::GreaterThan => *threshold + 1..=*value.end(),
                                 };
-                                let matching = part.with_attr(&attr, matching);
+                                let matching = part.with_attr(attr, matching);
                                 let non_matching = match operator {
-                                    Operator::LessThan => *threshold..value.end,
-                                    Operator::GreaterThan => value.start..*threshold + 1,
+                                    Operator::LessThan => *threshold..=*value.end(),
+                                    Operator::GreaterThan => *value.start()..=*threshold,
                                 };
-                                let non_matching = part.with_attr(&attr, non_matching);
+                                let non_matching = part.with_attr(attr, non_matching);
                                 part = non_matching;
-                                sum += self.process_range(matching, &to)
+                                sum += self.process_range(matching, to);
                             } else {
                                 sum += match operator {
                                     Operator::LessThan => {
-                                        if value.end >= *threshold {
+                                        if value.end() >= threshold {
                                             0
                                         } else {
-                                            self.process_range(part.clone(), &to)
+                                            self.process_range(part.clone(), to)
                                         }
                                     }
                                     Operator::GreaterThan => {
-                                        if value.end < *threshold {
+                                        if value.end() < threshold {
                                             0
                                         } else {
-                                            self.process_range(part.clone(), &to)
+                                            self.process_range(part.clone(), to)
                                         }
                                     }
                                 };
@@ -203,8 +203,8 @@ impl<'a> Rule<'a> {
                     Attr::X => part.x.clone(),
                 };
                 if match operator {
-                    Operator::GreaterThan => value.start > *limit,
-                    Operator::LessThan => value.start < *limit,
+                    Operator::GreaterThan => value.start() > limit,
+                    Operator::LessThan => value.start() < limit,
                 } {
                     Some(to)
                 } else {
@@ -276,10 +276,10 @@ impl<'a> From<&'a str> for Rule<'a> {
 
 #[derive(Clone, Debug)]
 struct Part {
-    x: Range<u16>,
-    m: Range<u16>,
-    a: Range<u16>,
-    s: Range<u16>,
+    x: RangeInclusive<u16>,
+    m: RangeInclusive<u16>,
+    a: RangeInclusive<u16>,
+    s: RangeInclusive<u16>,
 }
 impl From<&str> for Part {
     fn from(value: &str) -> Self {
@@ -289,10 +289,10 @@ impl From<&str> for Part {
             .map(|(attr, value)| (Attr::from(attr), value.parse::<u16>().unwrap()))
             .collect();
         Self {
-            x: *attrs.get(&Attr::X).unwrap()..(*attrs.get(&Attr::X).unwrap() + 1),
-            m: *attrs.get(&Attr::M).unwrap()..(*attrs.get(&Attr::M).unwrap() + 1),
-            a: *attrs.get(&Attr::A).unwrap()..(*attrs.get(&Attr::A).unwrap() + 1),
-            s: *attrs.get(&Attr::S).unwrap()..(*attrs.get(&Attr::S).unwrap() + 1),
+            x: *attrs.get(&Attr::X).unwrap()..=*attrs.get(&Attr::X).unwrap(),
+            m: *attrs.get(&Attr::M).unwrap()..=*attrs.get(&Attr::M).unwrap(),
+            a: *attrs.get(&Attr::A).unwrap()..=*attrs.get(&Attr::A).unwrap(),
+            s: *attrs.get(&Attr::S).unwrap()..=*attrs.get(&Attr::S).unwrap(),
         }
     }
 }
@@ -337,7 +337,6 @@ hdj{m>838:A,pv}
     }
 
     #[test]
-    #[ignore]
     fn test_pt2() {
         assert_eq!("113057405770956".to_string(), Day {}.pt2(input()))
     }
