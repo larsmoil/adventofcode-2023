@@ -7,11 +7,6 @@ impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         let workflows = Workflows::from(input);
         let accepted = workflows.sort();
-        let accepted: usize = accepted
-            .iter()
-            .map(|p| p.a.start() + p.m.start() + p.s.start() + p.x.start())
-            .map(|s| usize::try_from(s).unwrap())
-            .sum::<usize>();
         format!("{accepted}")
     }
     fn pt2(&self, input: &str) -> String {
@@ -24,18 +19,16 @@ impl Solver for Day {
                 s: 1..=4000,
             },
             &ProcessResult::Next("in"),
+            |part| part.a.len() * part.m.len() * part.s.len() * part.x.len(),
         );
         format!("{processed}")
     }
 }
 
-impl<'a> Workflow<'a> {
-    fn process(&self, part: &Part) -> Option<&ProcessResult> {
-        self.1.iter().find_map(|rule| rule.apply(part))
-    }
-}
-
 impl Part {
+    fn is_empty(&self) -> bool {
+        self.a.is_empty() || self.m.is_empty() || self.s.is_empty() || self.x.is_empty()
+    }
     fn with_attr(&self, attr: &Attr, value: RangeInclusive<u16>) -> Part {
         match attr {
             Attr::A => Part {
@@ -67,30 +60,27 @@ impl Part {
 }
 
 impl<'a> Workflows<'a> {
-    fn sort(&self) -> Vec<Part> {
+    fn sort(&self) -> usize {
         self.1
             .clone()
             .into_iter()
-            .filter(|part| self.process(part))
-            .collect()
+            .map(|part| {
+                self.process_range(part, &ProcessResult::Next("in"), |p| {
+                    let score =
+                        if p.a.is_empty() || p.m.is_empty() || p.s.is_empty() || p.x.is_empty() {
+                            0
+                        } else {
+                            p.a.start() + p.m.start() + p.s.start() + p.x.start()
+                        };
+                    usize::try_from(score).unwrap()
+                })
+            })
+            .sum::<usize>()
     }
 
-    fn process(&self, part: &Part) -> bool {
-        let mut workflow = self.0.get("in").unwrap();
-        loop {
-            let result = workflow.process(part);
-            match result {
-                Some(ProcessResult::Accept) => return true,
-                Some(ProcessResult::Reject) => return false,
-                Some(ProcessResult::Next(next)) => workflow = self.0.get(next).unwrap(),
-                None => todo!("No result from workflow {workflow:?}"),
-            }
-        }
-    }
-
-    fn process_range(&self, part: Part, next: &ProcessResult) -> usize {
+    fn process_range(&self, part: Part, next: &ProcessResult, score: fn(&Part) -> usize) -> usize {
         match next {
-            ProcessResult::Accept => part.a.len() * part.m.len() * part.s.len() * part.x.len(),
+            ProcessResult::Accept => score(&part),
             ProcessResult::Reject => 0,
             ProcessResult::Next(next) => {
                 let workflow = self.0.get(next).unwrap();
@@ -99,7 +89,7 @@ impl<'a> Workflows<'a> {
                 for rule in &workflow.1 {
                     match rule {
                         Rule::Pass(target) => {
-                            sum += self.process_range(part, target);
+                            sum += self.process_range(part, target, score);
                             break;
                         }
                         Rule::Conditional(attr, operator, threshold, to) => {
@@ -109,33 +99,42 @@ impl<'a> Workflows<'a> {
                                 Attr::S => &part.s,
                                 Attr::X => &part.x,
                             };
-                            if value.contains(threshold) {
+                            let adjusted_threshold: u16 = match operator {
+                                Operator::LessThan => *threshold - 1,
+                                Operator::GreaterThan => *threshold + 1,
+                            };
+                            if value.contains(&adjusted_threshold) {
                                 let matching = match operator {
-                                    Operator::LessThan => *value.start()..=*threshold - 1,
-                                    Operator::GreaterThan => *threshold + 1..=*value.end(),
+                                    Operator::LessThan => *value.start()..=adjusted_threshold,
+                                    Operator::GreaterThan => adjusted_threshold..=*value.end(),
                                 };
-                                let matching = part.with_attr(attr, matching);
-                                let non_matching = match operator {
-                                    Operator::LessThan => *threshold..=*value.end(),
-                                    Operator::GreaterThan => *value.start()..=*threshold,
-                                };
-                                let non_matching = part.with_attr(attr, non_matching);
-                                part = non_matching;
-                                sum += self.process_range(matching, to);
+                                if !matching.is_empty() {
+                                    let matching = part.with_attr(attr, matching);
+                                    sum += self.process_range(matching, to, score);
+
+                                    let non_matching = match operator {
+                                        Operator::LessThan => *threshold..=*value.end(),
+                                        Operator::GreaterThan => *value.start()..=*threshold,
+                                    };
+                                    let non_matching = part.with_attr(attr, non_matching);
+                                    if non_matching.is_empty() {
+                                        break;
+                                    }
+
+                                    part = non_matching;
+                                }
                             } else {
-                                sum += match operator {
+                                match operator {
                                     Operator::LessThan => {
-                                        if value.end() >= threshold {
-                                            0
-                                        } else {
-                                            self.process_range(part.clone(), to)
+                                        if value.end() < threshold {
+                                            sum += self.process_range(part.clone(), to, score);
+                                            break;
                                         }
                                     }
                                     Operator::GreaterThan => {
-                                        if value.end() < threshold {
-                                            0
-                                        } else {
-                                            self.process_range(part.clone(), to)
+                                        if value.start() > threshold {
+                                            sum += self.process_range(part.clone(), to, score);
+                                            break;
                                         }
                                     }
                                 };
@@ -187,30 +186,6 @@ impl From<&str> for Attr {
             "s" => Attr::S,
             "x" => Attr::X,
             &_ => todo!("Unknown operator: {}", value),
-        }
-    }
-}
-
-impl<'a> Rule<'a> {
-    fn apply(&self, part: &Part) -> Option<&ProcessResult> {
-        match &self {
-            Rule::Pass(to) => Some(to),
-            Rule::Conditional(attr, operator, limit, to) => {
-                let value = match attr {
-                    Attr::A => part.a.clone(),
-                    Attr::M => part.m.clone(),
-                    Attr::S => part.s.clone(),
-                    Attr::X => part.x.clone(),
-                };
-                if match operator {
-                    Operator::GreaterThan => value.start() > limit,
-                    Operator::LessThan => value.start() < limit,
-                } {
-                    Some(to)
-                } else {
-                    None
-                }
-            }
         }
     }
 }
