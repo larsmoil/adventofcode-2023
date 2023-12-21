@@ -61,8 +61,7 @@ impl ParabolicReflectorDish {
         self.1
     }
     fn roll(s: &[char], before: char, after: char) -> Vec<char> {
-        let chunks: Vec<Vec<char>> = s
-            .split(|c| *c == '#')
+        s.split(|c| *c == '#')
             .map(|chunk| {
                 let mut chunk = chunk.to_vec();
                 chunk.sort_by(|a, b| {
@@ -76,20 +75,15 @@ impl ParabolicReflectorDish {
                 });
                 chunk
             })
-            .collect();
+            .reduce(|mut acc, c| {
+                acc.push('#');
 
-        chunks
-            .into_iter()
-            .enumerate()
-            .fold(vec![], |mut acc, (i, c)| {
-                if i != 0 {
-                    acc.push('#');
-                }
                 for e in c {
                     acc.push(e);
                 }
                 acc
             })
+            .unwrap()
     }
     fn roll_end(s: &[char]) -> Vec<char> {
         Self::roll(s, '.', 'O')
