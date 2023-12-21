@@ -22,12 +22,9 @@ impl Solver for Day {
     }
     fn pt2(&self, input: &str) -> String {
         let mut machines = Machines::from(input);
-        let vr_inputs = [
-            String::from("pq"),
-            String::from("fg"),
-            String::from("dk"),
-            String::from("fm"),
-        ];
+        let vr_inputs = ["pq", "fg", "dk", "fm"];
+        let vr_inputs: [usize; 4] =
+            vr_inputs.map(|i| machines.0.iter().position(|m| m.label() == i).unwrap());
         let mut cycles: Vec<usize> = vec![];
 
         for i in 1.. {
@@ -57,8 +54,8 @@ pub(crate) fn input() -> &'static str {
     include_str!("day20-input.txt").trim()
 }
 
-type Sent = (String, PulseType);
-type Signal = (String, PulseType, Vec<Option<usize>>);
+type Sent = (usize, PulseType);
+type Signal = (usize, String, PulseType, Vec<Option<usize>>);
 
 #[derive(Debug)]
 struct Machines(Vec<Box<dyn Module>>);
@@ -90,21 +87,21 @@ impl Machines {
     fn broadcast(&mut self, pulse_type: PulseType, to: &str) -> Vec<Sent> {
         let to = self.module(to).unwrap();
         let mut sent: Vec<Sent> = vec![];
-        let signal: Signal = (String::from("button"), pulse_type, vec![Some(to)]);
+        let signal: Signal = (1337, String::from("button"), pulse_type, vec![Some(to)]);
         let mut all_signals: Vec<Vec<Signal>> = vec![vec![signal]];
 
         while !all_signals.is_empty() {
             let signals = all_signals.remove(0);
             let mut to_send: Vec<Signal> = vec![];
-            for (sender, signal, receivers) in signals {
+            for (sender_index, sender_label, signal, receivers) in signals {
                 for receiver in receivers {
                     if let Some(receiver) = receiver {
-                        let receiver = self.0.get_mut(receiver).unwrap();
-                        if let Some(output) = receiver.receive(signal, &sender) {
-                            to_send.push(output);
+                        let receiver_module = self.0.get_mut(receiver).unwrap();
+                        if let Some(output) = receiver_module.receive(signal, &sender_label) {
+                            to_send.push((receiver, output.0, output.1, output.2));
                         }
                     }
-                    sent.push((sender.clone(), signal));
+                    sent.push((sender_index, signal));
                 }
             }
             if !to_send.is_empty() {
