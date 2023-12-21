@@ -1,5 +1,5 @@
 use num::integer::lcm;
-use std::fmt::Debug;
+use std::{collections::HashMap, fmt::Debug};
 
 use crate::problem::Solver;
 pub struct Day {}
@@ -8,7 +8,7 @@ impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         let mut machines = Machines::from(input);
         let signals: (usize, usize) = (0..1000).fold((0_usize, 0_usize), |mut acc, _| {
-            let signals = machines.broadcast(PulseType::Low, String::from("broadcaster"));
+            let signals = machines.broadcast(PulseType::Low, "broadcaster");
             for (_, signal, _) in signals {
                 acc = match signal {
                     PulseType::High => (acc.0, acc.1 + 1),
@@ -32,7 +32,7 @@ impl Solver for Day {
         let mut cycles: Vec<usize> = vec![];
 
         for i in 1.. {
-            let signals = machines.broadcast(PulseType::Low, String::from("broadcaster"));
+            let signals = machines.broadcast(PulseType::Low, "broadcaster");
 
             for (from, pulse_type, _to) in signals {
                 if vr_inputs.contains(&from) && pulse_type == PulseType::High {
@@ -58,28 +58,55 @@ pub(crate) fn input() -> &'static str {
     include_str!("day20-input.txt").trim()
 }
 
+type Sent = (String, PulseType, Option<String>);
+type Signal = (String, PulseType, Vec<Option<usize>>);
+
 #[derive(Debug)]
 struct Machines(Vec<Box<dyn Module>>);
 impl Machines {
-    fn module(&mut self, label: &str) -> Option<&mut Box<dyn Module>> {
-        self.0.iter_mut().find(|m| m.label() == label)
+    fn init_conjunctions(&mut self) {
+        let mut input_output: Vec<(usize, String, usize)> = self
+            .0
+            .iter()
+            .enumerate()
+            .flat_map(|(i, m)| {
+                m.outputs()
+                    .into_iter()
+                    .flatten()
+                    .map(|output| (i, m.label(), output))
+                    .collect::<Vec<(usize, String, usize)>>()
+            })
+            .collect();
+        input_output.sort_unstable();
+        input_output.dedup();
+
+        for (_sender_index, sender_label, receiver_index) in input_output {
+            let receiver = self.0.get_mut(receiver_index).unwrap();
+            receiver.add_input(&sender_label);
+        }
     }
-    fn broadcast(&mut self, pulse_type: PulseType, to: String) -> Vec<(String, PulseType, String)> {
-        let mut sent: Vec<(String, PulseType, String)> = vec![];
-        let signal: (String, PulseType, Vec<String>) =
-            (String::from("button"), pulse_type, vec![to]);
-        let mut all_signals: Vec<Vec<(String, PulseType, Vec<String>)>> = vec![vec![signal]];
+    fn module(&mut self, label: &str) -> Option<usize> {
+        self.0.iter_mut().position(|m| m.label() == label)
+    }
+    fn broadcast(&mut self, pulse_type: PulseType, to: &str) -> Vec<Sent> {
+        let to = self.module(to).unwrap();
+        let mut sent: Vec<Sent> = vec![];
+        let signal: Signal = (String::from("button"), pulse_type, vec![Some(to)]);
+        let mut all_signals: Vec<Vec<Signal>> = vec![vec![signal]];
 
         while !all_signals.is_empty() {
             let signals = all_signals.remove(0);
-            let mut to_send: Vec<(String, PulseType, Vec<String>)> = vec![];
+            let mut to_send: Vec<Signal> = vec![];
             for (sender, signal, receivers) in signals {
                 for receiver in receivers {
-                    sent.push((sender.clone(), signal, receiver.clone()));
-                    if let Some(receiver) = self.module(&receiver) {
-                        if let Some(output) = receiver.receive(signal, sender.clone()) {
+                    if let Some(receiver) = receiver {
+                        let receiver = self.0.get_mut(receiver).unwrap();
+                        if let Some(output) = receiver.receive(signal, &sender) {
                             to_send.push(output);
                         }
+                        sent.push((sender.clone(), signal, Some(receiver.label())));
+                    } else {
+                        sent.push((sender.clone(), signal, None));
                     }
                 }
             }
@@ -92,78 +119,63 @@ impl Machines {
 }
 
 trait Module: Debug {
-    fn conjunction(&self) -> Option<&Conjunction>;
-    fn conjunction_mut(&mut self) -> Option<&mut Conjunction>;
+    fn add_input(&mut self, input: &str);
     fn label(&self) -> String;
-    fn outputs(&self) -> Vec<String>;
+    fn outputs(&self) -> Vec<Option<usize>>;
     fn receive(
         &mut self,
         signal: PulseType,
-        sender: String,
-    ) -> Option<(String, PulseType, Vec<String>)>;
+        sender: &str,
+    ) -> Option<(String, PulseType, Vec<Option<usize>>)>;
 }
 
 #[derive(Debug)]
 struct Broadcaster {
     label: String,
-    outputs: Vec<String>,
+    outputs: Vec<Option<usize>>,
 }
 #[derive(Debug)]
 struct FlipFlop {
     label: String,
-    outputs: Vec<String>,
+    outputs: Vec<Option<usize>>,
     state: bool,
 }
 #[derive(Debug)]
 struct Conjunction {
     label: String,
-    outputs: Vec<String>,
+    outputs: Vec<Option<usize>>,
     remembered: Vec<(String, PulseType)>,
 }
 
 impl Module for Broadcaster {
-    fn conjunction(&self) -> Option<&Conjunction> {
-        None
-    }
-    fn conjunction_mut(&mut self) -> Option<&mut Conjunction> {
-        None
-    }
+    fn add_input(&mut self, _input: &str) {}
     fn label(&self) -> String {
         self.label.clone()
     }
-    fn outputs(&self) -> Vec<String> {
+    fn outputs(&self) -> Vec<Option<usize>> {
         self.outputs.clone()
     }
     fn receive(
         &mut self,
         signal: PulseType,
-        _sender: String,
-    ) -> Option<(String, PulseType, Vec<String>)> {
-        Some((
-            self.label(),
-            signal,
-            self.outputs.clone().into_iter().map(String::from).collect(),
-        ))
+        _sender: &str,
+    ) -> Option<(String, PulseType, Vec<Option<usize>>)> {
+        Some((self.label(), signal, self.outputs.clone()))
     }
 }
 impl Module for FlipFlop {
-    fn conjunction(&self) -> Option<&Conjunction> {
-        None
-    }
-    fn conjunction_mut(&mut self) -> Option<&mut Conjunction> {
-        None
-    }
+    fn add_input(&mut self, _input: &str) {}
     fn label(&self) -> String {
         self.label.clone()
     }
-    fn outputs(&self) -> Vec<String> {
+    fn outputs(&self) -> Vec<Option<usize>> {
         self.outputs.clone()
     }
     fn receive(
         &mut self,
         signal: PulseType,
-        _sender: String,
-    ) -> Option<(String, PulseType, Vec<String>)> {
+        _sender: &str,
+    ) -> Option<(String, PulseType, Vec<Option<usize>>)> {
         match signal {
             PulseType::High => None,
             PulseType::Low => {
@@ -179,30 +191,25 @@ impl Module for FlipFlop {
     }
 }
 impl Module for Conjunction {
-    fn conjunction(&self) -> Option<&Conjunction> {
-        Some(self)
-    }
-    fn conjunction_mut(&mut self) -> Option<&mut Conjunction> {
-        Some(self)
+    fn add_input(&mut self, input: &str) {
+        self.remembered.push((String::from(input), PulseType::Low));
     }
     fn label(&self) -> String {
         self.label.clone()
     }
-    fn outputs(&self) -> Vec<String> {
+    fn outputs(&self) -> Vec<Option<usize>> {
         self.outputs.clone()
     }
     fn receive(
         &mut self,
         signal: PulseType,
-        sender: String,
-    ) -> Option<(String, PulseType, Vec<String>)> {
-        let remembered = if let Some(i) = self.remembered.iter_mut().position(|(l, _)| l == &sender)
-        {
-            &mut self.remembered[i]
-        } else {
-            self.remembered.insert(0, (sender.clone(), PulseType::Low));
-            &mut self.remembered[0]
-        };
+        sender: &str,
+    ) -> Option<(String, PulseType, Vec<Option<usize>>)> {
+        let remembered = self
+            .remembered
+            .iter_mut()
+            .find(|(l, _)| l == sender)
+            .unwrap();
 
         remembered.1 = signal;
 
@@ -213,14 +220,8 @@ impl Module for Conjunction {
             } else {
                 PulseType::High
             },
-            self.outputs.clone().into_iter().map(String::from).collect(),
+            self.outputs.clone(),
         ))
-    }
-}
-
-impl Conjunction {
-    fn add_input(&mut self, input: String) {
-        self.remembered.push((input, PulseType::Low));
     }
 }
 
@@ -232,30 +233,33 @@ enum PulseType {
 
 impl From<&str> for Machines {
     fn from(value: &str) -> Self {
-        let mut modules: Vec<Box<dyn Module>> = value.lines().map(module_from).collect();
-        let mut connections: Vec<(String, String)> = vec![];
-        for module in &modules {
-            let label = module.label();
-            let outputs = module.outputs();
-            for output in outputs {
-                let output = modules.iter().find(|m| m.label() == output);
-                if let Some(output) = output {
-                    if let Some(conjunction) = output.conjunction() {
-                        connections.push((label.clone(), conjunction.label()));
-                    }
-                }
-            }
-        }
-        for (from, to) in connections {
-            let to = modules.iter_mut().find(|m| m.label() == to).unwrap();
-            let conjunction = to.conjunction_mut().expect("should be a conjunction");
-            conjunction.add_input(from);
-        }
-        Self(modules)
+        let labels_to_indices: HashMap<&str, usize> = value
+            .lines()
+            .enumerate()
+            .map(|(i, l)| {
+                let type_index = l
+                    .chars()
+                    .position(|c| c == '&' || c == '%')
+                    .map_or(0, |p| p + 1);
+                let (label, _outputs) = l[type_index..]
+                    .split_once(" -> ")
+                    .unwrap_or_else(|| panic!("Not -> found: {}", &l[type_index..]));
+                (label, i)
+            })
+            .collect();
+
+        let modules: Vec<Box<dyn Module>> = value
+            .lines()
+            .map(|l| module_from(l, &labels_to_indices))
+            .collect();
+
+        let mut result = Self(modules);
+        result.init_conjunctions();
+        result
     }
 }
 
-fn module_from(value: &str) -> Box<dyn Module> {
+fn module_from(value: &str, labels_to_indices: &HashMap<&str, usize>) -> Box<dyn Module> {
     let type_index = value
         .chars()
         .position(|c| c == '&' || c == '%')
@@ -264,7 +268,10 @@ fn module_from(value: &str) -> Box<dyn Module> {
         .split_once(" -> ")
         .unwrap_or_else(|| panic!("Not -> found: {}", &value[type_index..]));
     let label = String::from(label);
-    let outputs: Vec<String> = outputs.split(", ").map(String::from).collect();
+    let outputs: Vec<Option<usize>> = outputs
+        .split(", ")
+        .map(|label| labels_to_indices.get(label).copied())
+        .collect();
 
     let result: Box<dyn Module> = match &value[..type_index] {
         "&" => Box::new(Conjunction {
