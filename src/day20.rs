@@ -7,15 +7,14 @@ pub struct Day {}
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         let mut machines = Machines::from(input);
-        let signals: (usize, usize) = (0..1000).fold((0_usize, 0_usize), |mut acc, _| {
+        let signals: (usize, usize) = (0..1000).fold((0_usize, 0_usize), |acc, _| {
             let signals = machines.broadcast(PulseType::Low, "broadcaster");
-            for (_, signal, _) in signals {
-                acc = match signal {
+            signals
+                .iter()
+                .fold(acc, |acc, (_sender, pulse_type)| match pulse_type {
                     PulseType::High => (acc.0, acc.1 + 1),
                     PulseType::Low => (acc.0 + 1, acc.1),
-                }
-            }
-            acc
+                })
         });
 
         let signals = signals.0 * signals.1;
@@ -34,7 +33,7 @@ impl Solver for Day {
         for i in 1.. {
             let signals = machines.broadcast(PulseType::Low, "broadcaster");
 
-            for (from, pulse_type, _to) in signals {
+            for (from, pulse_type) in signals {
                 if vr_inputs.contains(&from) && pulse_type == PulseType::High {
                     cycles.push(i);
                 }
@@ -58,7 +57,7 @@ pub(crate) fn input() -> &'static str {
     include_str!("day20-input.txt").trim()
 }
 
-type Sent = (String, PulseType, Option<String>);
+type Sent = (String, PulseType);
 type Signal = (String, PulseType, Vec<Option<usize>>);
 
 #[derive(Debug)]
@@ -104,10 +103,8 @@ impl Machines {
                         if let Some(output) = receiver.receive(signal, &sender) {
                             to_send.push(output);
                         }
-                        sent.push((sender.clone(), signal, Some(receiver.label())));
-                    } else {
-                        sent.push((sender.clone(), signal, None));
                     }
+                    sent.push((sender.clone(), signal));
                 }
             }
             if !to_send.is_empty() {
