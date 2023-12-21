@@ -13,7 +13,7 @@ impl Solver for Day {
     }
     fn pt2(&self, input: &str) -> String {
         let mut dish = ParabolicReflectorDish::from(input.to_owned());
-        let mut patterns: Vec<Vec<Vec<char>>> = vec![];
+        let mut patterns: Vec<Vec<char>> = vec![];
 
         let cycles = 1_000_000_000;
         for i in 0..cycles {
@@ -42,14 +42,24 @@ impl Solver for Day {
 }
 
 #[derive(Debug, PartialEq)]
-struct ParabolicReflectorDish(Vec<Vec<char>>);
+struct ParabolicReflectorDish(Vec<char>, usize);
 impl From<String> for ParabolicReflectorDish {
     fn from(value: String) -> Self {
-        Self(value.lines().map(|l| l.chars().collect()).collect())
+        let width = value.lines().collect::<Vec<_>>().len();
+        Self(
+            value
+                .lines()
+                .flat_map(|l| l.chars().collect::<Vec<char>>())
+                .collect(),
+            width,
+        )
     }
 }
 
 impl ParabolicReflectorDish {
+    fn width(&self) -> usize {
+        self.1
+    }
     fn roll(s: &[char], before: char, after: char) -> Vec<char> {
         let chunks: Vec<Vec<char>> = s
             .split(|c| *c == '#')
@@ -66,7 +76,7 @@ impl ParabolicReflectorDish {
                 });
                 chunk
             })
-            .collect::<Vec<Vec<char>>>();
+            .collect();
 
         chunks
             .into_iter()
@@ -75,7 +85,10 @@ impl ParabolicReflectorDish {
                 if i != 0 {
                     acc.push('#');
                 }
-                [acc, c].concat()
+                for e in c {
+                    acc.push(e);
+                }
+                acc
             })
     }
     fn roll_end(s: &[char]) -> Vec<char> {
@@ -91,45 +104,46 @@ impl ParabolicReflectorDish {
         self.tilt_east();
     }
     fn tilt_west(&mut self) {
-        self.0 = self.0.iter().map(|l| Self::roll_start(l)).collect();
+        self.0 = self
+            .0
+            .chunks(self.width())
+            .flat_map(|l| Self::roll_start(l))
+            .collect();
     }
     fn tilt_east(&mut self) {
-        self.0 = self.0.iter().map(|l| Self::roll_end(l)).collect();
+        self.0 = self
+            .0
+            .chunks(self.width())
+            .flat_map(|l| Self::roll_end(l))
+            .collect();
     }
     fn tilt_south(&mut self) {
-        let tilted_columns: Vec<Vec<char>> = (0..self.0.len())
-            .map(|i| self.0.iter().map(|l| l[i]).collect::<Vec<char>>())
-            .map(|c| Self::roll_end(&c))
-            .collect();
-
-        self.0 = (0..self.0.len())
-            .map(|i| {
-                tilted_columns
-                    .iter()
-                    .map(|column| column[i])
-                    .collect::<Vec<char>>()
-            })
-            .collect();
+        self.swap_axis();
+        self.tilt_east();
+        self.swap_axis();
     }
 
     fn tilt_north(&mut self) {
-        let tilted_columns: Vec<Vec<char>> = (0..self.0.len())
-            .map(|i| self.0.iter().map(|l| l[i]).collect::<Vec<char>>())
-            .map(|c| Self::roll_start(&c))
-            .collect();
-
-        self.0 = (0..self.0.len())
-            .map(|i| {
-                tilted_columns
-                    .iter()
-                    .map(|column| column[i])
-                    .collect::<Vec<char>>()
-            })
-            .collect();
+        self.swap_axis();
+        self.tilt_west();
+        self.swap_axis();
     }
+
+    fn swap_axis(&mut self) {
+        let width = self.width();
+
+        (0..width).for_each(|i| {
+            (i + 1..width).for_each(|j| {
+                let r = i * width + j;
+                let c = j * width + i;
+                self.0.swap(c, r);
+            });
+        });
+    }
+
     fn load(&self) -> usize {
         self.0
-            .iter()
+            .chunks(self.width())
             .rev()
             .enumerate()
             .map(|(i, l)| (i + 1) * l.iter().filter(|c| **c == 'O').collect::<Vec<_>>().len())
