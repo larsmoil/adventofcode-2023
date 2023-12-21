@@ -107,14 +107,14 @@ impl ParabolicReflectorDish {
         self.0 = self
             .0
             .chunks(self.width())
-            .flat_map(|l| Self::roll_start(l))
+            .flat_map(Self::roll_start)
             .collect();
     }
     fn tilt_east(&mut self) {
         self.0 = self
             .0
             .chunks(self.width())
-            .flat_map(|l| Self::roll_end(l))
+            .flat_map(Self::roll_end)
             .collect();
     }
     fn tilt_south(&mut self) {
