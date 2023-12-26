@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, Eq, Hash, Ord, PartialEq, PartialOrd)]
 pub struct Coordinate(pub isize, pub isize);
 
 impl Display for Coordinate {
