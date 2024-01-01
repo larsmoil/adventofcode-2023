@@ -10,7 +10,7 @@ impl Solver for Day {
         format!("{plots}")
     }
     fn pt2(&self, input: &str) -> String {
-        let plots = Map::pt2(&input.bytes().collect::<Vec<_>>(), 26501365);
+        let plots = Map::pt2(&input.bytes().collect::<Vec<_>>(), 26_501_365);
         format!("{plots}")
     }
 }
