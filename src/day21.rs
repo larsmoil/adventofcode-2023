@@ -47,11 +47,11 @@ impl Map {
         a + x * (b - a) + x * (x - 1) / 2 * ((c - b) - (b - a))
     }
 
-    fn plots(&self, steps: u64, visited: Option<HashSet<Coordinate>>) -> Option<u64> {
+    fn plots(&self, steps: u64, visited: Option<HashSet<Coordinate<isize>>>) -> Option<u64> {
         if steps == 0 {
             visited.map(|v| u64::try_from(v.len()).unwrap())
         } else {
-            let reachable: HashSet<Coordinate> = visited
+            let reachable: HashSet<Coordinate<isize>> = visited
                 .unwrap_or_else(|| HashSet::from_iter([self.start()]))
                 .iter()
                 .flat_map(|c| self.reachable(c))
@@ -60,7 +60,7 @@ impl Map {
             self.plots(steps - 1, Some(reachable))
         }
     }
-    fn start(&self) -> Coordinate {
+    fn start(&self) -> Coordinate<isize> {
         let s = isize::try_from(
             self.terrain
                 .iter()
@@ -72,7 +72,7 @@ impl Map {
         .unwrap();
         Coordinate(s % self.width, s / self.width)
     }
-    fn reachable(&self, from: &Coordinate) -> HashSet<Coordinate> {
+    fn reachable(&self, from: &Coordinate<isize>) -> HashSet<Coordinate<isize>> {
         [
             self.up(from),
             self.right(from),
@@ -83,11 +83,11 @@ impl Map {
         .flatten()
         .collect()
     }
-    fn terrain_type(&self, coordinate: &Coordinate) -> Terrain {
+    fn terrain_type(&self, coordinate: &Coordinate<isize>) -> Terrain {
         self.terrain
             [usize::try_from(coordinate.0 % self.width + coordinate.1 * self.width).unwrap()]
     }
-    fn up(&self, from: &Coordinate) -> Option<Coordinate> {
+    fn up(&self, from: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         if from.1 > 0 {
             Some(Coordinate(from.0, from.1 - 1))
         } else {
@@ -95,7 +95,7 @@ impl Map {
         }
         .filter(|c| self.terrain_type(c) != Terrain::Rock)
     }
-    fn right(&self, from: &Coordinate) -> Option<Coordinate> {
+    fn right(&self, from: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         if from.0 < self.width - 1 {
             Some(Coordinate(from.0 + 1, from.1))
         } else {
@@ -103,7 +103,7 @@ impl Map {
         }
         .filter(|c| self.terrain_type(c) != Terrain::Rock)
     }
-    fn down(&self, from: &Coordinate) -> Option<Coordinate> {
+    fn down(&self, from: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         if from.1 < self.width - 1 {
             Some(Coordinate(from.0, from.1 + 1))
         } else {
@@ -111,7 +111,7 @@ impl Map {
         }
         .filter(|c| self.terrain_type(c) != Terrain::Rock)
     }
-    fn left(&self, from: &Coordinate) -> Option<Coordinate> {
+    fn left(&self, from: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         if from.0 > 0 {
             Some(Coordinate(from.0 - 1, from.1))
         } else {

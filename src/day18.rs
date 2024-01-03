@@ -27,14 +27,14 @@ struct LavaductLagoon<'a>(Vec<Instruction<'a>>);
 
 impl<'a> LavaductLagoon<'a> {
     fn dig(&self, instruction_type: &InstructionType) -> isize {
-        let start: Coordinate = Coordinate(0, 0);
-        let dig_points: Vec<Coordinate> = self.0.iter().fold(vec![start], |mut acc, dig| {
+        let start: Coordinate<isize> = Coordinate(0, 0);
+        let dig_points: Vec<Coordinate<isize>> = self.0.iter().fold(vec![start], |mut acc, dig| {
             let Coordinate(x, y) = *acc.last().unwrap();
             let (direction, steps) = match instruction_type {
                 InstructionType::Literal => (dig.0.clone(), dig.1),
                 InstructionType::Color => dig.2.extract_instruction(),
             };
-            let to: Coordinate = match direction {
+            let to: Coordinate<isize> = match direction {
                 Direction::North => Coordinate(x, y - steps),
                 Direction::East => Coordinate(x + steps, y),
                 Direction::South => Coordinate(x, y + steps),

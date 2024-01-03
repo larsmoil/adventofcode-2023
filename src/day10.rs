@@ -24,15 +24,16 @@ pub(crate) fn input() -> &'static str {
 }
 
 impl PipeMaze {
-    fn cycle(&self) -> Vec<Coordinate> {
+    fn cycle(&self) -> Vec<Coordinate<isize>> {
         let start = self.start();
         let mut connections = self.connections(&start);
 
-        let mut cycle: Vec<Coordinate> = vec![start.clone()];
+        let mut cycle: Vec<Coordinate<isize>> = vec![start.clone()];
         let mut from = start.clone();
         let mut to = connections.next().unwrap().clone();
         while to != start {
-            let new_tos: Vec<Coordinate> = self.connections(&to).filter(|c| c != &from).collect();
+            let new_tos: Vec<Coordinate<isize>> =
+                self.connections(&to).filter(|c| c != &from).collect();
             assert!(
                 new_tos.len() == 1,
                 "expected single connection, got: {new_tos:?} (from: {from}, to: {to})"
@@ -50,7 +51,7 @@ impl PipeMaze {
         shoelace(&self.cycle()) - isize::try_from(self.cycle().len()).unwrap()
     }
 
-    fn start(&self) -> Coordinate {
+    fn start(&self) -> Coordinate<isize> {
         let (i, _e) = self
             .pipes
             .iter()
@@ -63,7 +64,7 @@ impl PipeMaze {
         )
     }
 
-    fn connections(&self, position: &Coordinate) -> impl Iterator<Item = Coordinate> {
+    fn connections(&self, position: &Coordinate<isize>) -> impl Iterator<Item = Coordinate<isize>> {
         [
             self.north(position),
             self.east(position),
@@ -74,15 +75,19 @@ impl PipeMaze {
         .flatten()
     }
 
-    fn pipe_type(&self, position: &Coordinate) -> &PipeType {
+    fn pipe_type(&self, position: &Coordinate<isize>) -> &PipeType {
         &self.pipes[usize::try_from(position.0).unwrap()
             + usize::try_from(position.1).unwrap() * self.width]
     }
 
-    fn connection(&self, from: &Coordinate, direction: &Direction) -> Option<Coordinate> {
+    fn connection(
+        &self,
+        from: &Coordinate<isize>,
+        direction: &Direction,
+    ) -> Option<Coordinate<isize>> {
         let Coordinate(from_x, from_y) = *from;
 
-        let to: Option<Coordinate> = match direction {
+        let to: Option<Coordinate<isize>> = match direction {
             Direction::North => {
                 if from_y > 0 {
                     Some(Coordinate(from.0, from.1 - 1))
@@ -130,16 +135,16 @@ impl PipeMaze {
             None
         }
     }
-    fn north(&self, position: &Coordinate) -> Option<Coordinate> {
+    fn north(&self, position: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         self.connection(position, &Direction::North)
     }
-    fn east(&self, position: &Coordinate) -> Option<Coordinate> {
+    fn east(&self, position: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         self.connection(position, &Direction::East)
     }
-    fn south(&self, position: &Coordinate) -> Option<Coordinate> {
+    fn south(&self, position: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         self.connection(position, &Direction::South)
     }
-    fn west(&self, position: &Coordinate) -> Option<Coordinate> {
+    fn west(&self, position: &Coordinate<isize>) -> Option<Coordinate<isize>> {
         self.connection(position, &Direction::West)
     }
 }
