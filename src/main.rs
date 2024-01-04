@@ -25,6 +25,7 @@ mod day20;
 mod day21;
 mod day22;
 mod day23;
+mod day24;
 mod libs;
 mod problem;
 
@@ -33,7 +34,7 @@ fn main() {
     let args: Vec<String> = env::args().collect();
     let only_day: Option<i32> = args.get(1).map(|a| a.parse().unwrap());
 
-    for day in (1..=23).filter(|d| only_day.is_none() || only_day.unwrap() == *d) {
+    for day in (1..=24).filter(|d| only_day.is_none() || only_day.unwrap() == *d) {
         let (d, inp): (&dyn Solver, &str) = match day {
             1 => (&day01::Day {}, day01::input()),
             2 => (&day02::Day {}, day02::input()),
@@ -58,6 +59,7 @@ fn main() {
             21 => (&day21::Day {}, day21::input()),
             22 => (&day22::Day {}, day22::input()),
             23 => (&day23::Day {}, day23::input()),
+            24 => (&day24::Day {}, day24::input()),
             _ => panic!("Invalid day!"),
         };
         let now = Instant::now();
