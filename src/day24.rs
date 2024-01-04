@@ -6,7 +6,10 @@ pub struct Day {}
 impl Solver for Day {
     fn pt1(&self, input: &str) -> String {
         let hailstones: Hailstones<i128> = Hailstones::from(input);
-        format!("{}", hailstones.cross(200000000000000..=400000000000000))
+        format!(
+            "{}",
+            hailstones.cross(200_000_000_000_000..=400_000_000_000_000)
+        )
     }
     fn pt2(&self, input: &str) -> String {
         let hailstones: Hailstones<i128> = Hailstones::from(input);
